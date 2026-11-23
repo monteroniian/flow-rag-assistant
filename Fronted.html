@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente de Contención</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .chat-container { width: 100%; max-width: 500px; background: white; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); display: flex; flex-direction: column; overflow: hidden; height: 85vh; }
+        .header { background-color: #5d9b9b; color: white; padding: 15px; text-align: center; font-weight: bold; font-size: 1.1em; }
+        .disclaimer { font-size: 0.8em; background: #ffeb3b; color: #333; text-align: center; padding: 5px; }
+        .messages { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .message { padding: 12px 16px; border-radius: 18px; max-width: 80%; line-height: 1.5; font-size: 0.95em; }
+        .user-msg { background-color: #e8f4f8; align-self: flex-end; border-bottom-right-radius: 4px; color: #2c3e50; }
+        .bot-msg { background-color: #f1f3f4; align-self: flex-start; border-bottom-left-radius: 4px; color: #333; }
+        .input-area { display: flex; border-top: 1px solid #eee; padding: 15px; background: #fff; }
+        input[type="text"] { flex-grow: 1; padding: 12px; border: 1px solid #ddd; border-radius: 25px; outline: none; transition: border 0.3s; }
+        input[type="text"]:focus { border-color: #5d9b9b; }
+        button { background-color: #5d9b9b; color: white; border: none; padding: 10px 20px; margin-left: 10px; border-radius: 25px; cursor: pointer; font-weight: bold; }
+        button:disabled { background-color: #b2d0d0; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <div class="header">Espacio de Escucha</div>
+    <div class="disclaimer">IA experimental de apoyo. Si estás en crisis severa, llama al 135 o al 0800-345-1435.</div>
+    <div class="messages" id="chat-box">
+        <div class="message bot-msg">Hola. Estoy aquí para acompañarte, tómate el tiempo que necesites. ¿De qué te gustaría hablar hoy?</div>
+    </div>
+    <div class="input-area">
+        <input type="text" id="user-input" placeholder="Escribe aquí cómo te sientes..." autocomplete="off" onkeypress="if(event.key === 'Enter') enviarMensaje()">
+        <button id="send-btn" onclick="enviarMensaje()">Enviar</button>
+    </div>
+</div>
+
+<script>
+    async function enviarMensaje() {
+        const inputField = document.getElementById("user-input");
+        const sendBtn = document.getElementById("send-btn");
+        const chatBox = document.getElementById("chat-box");
+        const mensaje = inputField.value.trim();
+
+        if (!mensaje) return;
+
+        // 1. Mostrar el mensaje del usuario en la pantalla
+        agregarMensaje(mensaje, "user-msg");
+        inputField.value = "";
+        inputField.disabled = true;
+        sendBtn.disabled = true;
+
+        // 2. Mostrar indicador de estado
+        const idCarga = "carga-" + Date.now();
+        agregarMensaje("Procesando y generando voz...", "bot-msg", idCarga);
+
+        try {
+            // 3. Enviar el texto a tu API de Python
+            const respuesta = await fetch("http://127.0.0.1:8000/enviar_mensaje", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mensaje: mensaje })
+            });
+
+            if (!respuesta.ok) throw new Error("Error en el servidor");
+
+            // 4. Recibir el audio de Kokoro y reproducirlo automáticamente
+            const blob = await respuesta.blob();
+            const audioUrl = URL.createObjectURL(blob);
+            const audio = new Audio(audioUrl);
+            
+            // Actualizar el estado en el chat
+            document.getElementById(idCarga).innerText = "🔊 (Mensaje de voz reproducido)";
+            
+            audio.play();
+            
+        } catch (error) {
+            console.error(error);
+            document.getElementById(idCarga).innerText = "❌ Error de conexión. Revisa que la API esté encendida en la terminal.";
+        } finally {
+            inputField.disabled = false;
+            sendBtn.disabled = false;
+            inputField.focus();
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    }
+
+    function agregarMensaje(texto, clase, id = null) {
+        const chatBox = document.getElementById("chat-box");
+        const div = document.createElement("div");
+        div.className = "message " + clase;
+        div.innerText = texto;
+        if (id) div.id = id;
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+</script>
+</body>
+</html>

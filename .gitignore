@@ -1,0 +1,9 @@
+.env
+.vscode/
+__pycache__/
+*.pyc
+chroma_db/
+base_conocimiento_psicologia/
+Mente/
+*.wav
+*.pdf
